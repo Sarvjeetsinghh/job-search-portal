@@ -1,10 +1,13 @@
-# Use official Tomcat image with JDK
-FROM tomcat:10.1-jdk17
+# Use official Tomcat image
+FROM tomcat:10.1.13-jdk17
 
-# Copy WAR file to Tomcat webapps
-COPY job-search-portal.war /usr/local/tomcat/webapps/
+# Remove default ROOT webapp
+RUN rm -rf /usr/local/tomcat/webapps/ROOT
 
-# Expose port 8080
+# Copy your WAR as ROOT.war so it deploys at root
+COPY ROOT.war /usr/local/tomcat/webapps/
+
+# Expose default Tomcat port
 EXPOSE 8080
 
 # Start Tomcat
