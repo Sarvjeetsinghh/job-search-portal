@@ -4,15 +4,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>PhonePe Home </title>
+<title>PhonePe Payment</title>
 </head>
 <body>
 
-<form action="PhonePePayServlet" method="get">
-    <input type="number" name="amount" placeholder="Enter Amount" required>
-    <button type="submit">Pay Using PhonePe</button>
-</form>
+<h2>Pay Using PhonePe</h2>
 
+<form action="${pageContext.request.contextPath}/phonepePay" method="post">
+    <input type="number" name="amount" placeholder="Enter Amount" required>
+    <button type="submit">Pay Now</button>
+</form>
 
 </body>
 </html>
