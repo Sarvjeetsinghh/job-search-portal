@@ -477,6 +477,131 @@ background:  #00CED1;
 }
 
 
+/*  last moment change
+
+*/
+
+
+/* css- styling */
+/* HERO SECTION */
+
+
+.hero-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;   /* login box ko bilkul right push */
+    padding: 20px 60px;
+    margin-top: 0;
+    gap: 40px;
+    width: 100%;
+}
+
+
+/* LEFT IMAGE */
+.hero-image img {
+    width: 460px;       /* same large size restored */
+    height: auto; 
+    object-fit: contain;
+    border-radius: 10px;
+    flex-shrink: 0;     /* IMPORTANT: image ko chhota hone se roke */
+}
+
+
+
+/* RIGHT SIDE WRAPPER (text + login ko horizontal line me rakhna) */
+.hero-right {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    width: 100%;                      /* full width so login goes to right */
+    gap: 50px;
+}
+
+
+/* TEXT BOX */
+.text-box {
+    max-width: 430px;
+    min-height: 260px;   /* 🔥 vertical height fixed */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;  /* content ko evenly spread karega */
+}
+
+
+/* Heading bigger + 2 lines */
+.text-box h1 {
+    font-size: 2.3rem;
+    line-height: 1.3;
+    margin: 0 0 10px 0;
+    font-weight:bold;
+    
+    
+}
+
+
+/* Paragraph 4-line look */
+.text-box p {
+    font-size: 1.15rem;
+    line-height: 1.7;  
+    font-weight:bold;
+    
+  /* vertical space increase */
+}
+
+
+
+
+/* LOGIN BOX (bada + right aligned) */
+.login-box {
+    width: 330px;
+    background: #ffffff;
+    padding: 28px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    margin-left: auto;                /* pushes login box to right end */
+}
+
+.login-box input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.login-box button {
+    width: 100%;
+    padding: 12px;
+    background: #0288d1;
+    border: none;
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+
+/* RESPONSIVE */
+@media(max-width: 992px) {
+    .hero-section {
+        flex-direction: column;
+        padding: 30px 20px;
+    }
+
+    .hero-right {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .login-box {
+        margin: 0 auto;
+    }
+
+    .hero-image img {
+        width: 300px;
+    }
+}
+
+
 <%-- featured-jobs --%>
 
 </style>
@@ -486,7 +611,11 @@ background:  #00CED1;
 
 <%@ include file="header.jsp" %>
 
+
 <%@ include file="payment.jsp" %>
+
+
+
 
 
 
@@ -551,6 +680,8 @@ background:  #00CED1;
 	<div class="text-center">
 		<a href="${pageContext.request.contextPath}/login.jsp" class="post-btn text-decoration-none d-inline-block">Post a Job</a>
 	</div>
+	
+
 
 
 <%@ include file="jobPlan.jsp" %>

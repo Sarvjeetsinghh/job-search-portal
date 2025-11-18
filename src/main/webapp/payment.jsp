@@ -8,7 +8,7 @@
 </head>
 <body>
 
-<form action="PhonePePayServlet" method="post">
+<form action="PhonePePayServlet" method="get">
     <input type="number" name="amount" placeholder="Enter Amount" required>
     <button type="submit">Pay Using PhonePe</button>
 </form>
@@ -16,6 +16,3 @@
 
 </body>
 </html>
-
-
-

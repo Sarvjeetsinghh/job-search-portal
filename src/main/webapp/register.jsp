@@ -33,7 +33,7 @@ body {
 			<div class="col-md-6">
 				<div class="card p-4 shadow-sm">
 					<h3 class="text-center mb-4">Candidate Registration</h3>
-					<form action="register" method="post">
+					<form action="login.jsp" method="post">
 						<div class="mb-3">
 							<label for="name" class="form-label">Name:</label> <input
 								type="text" class="form-control" id="name" name="name" required>

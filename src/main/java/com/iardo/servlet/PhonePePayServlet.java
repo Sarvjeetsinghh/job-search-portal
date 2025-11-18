@@ -1,5 +1,6 @@
 package com.iardo.servlet;
 
+
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -9,105 +10,126 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import jakarta.servlet.*;
+import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.*;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+
+
 
 @WebServlet("/PhonePePayServlet")
 public class PhonePePayServlet extends HttpServlet {
 
-    private static final String MERCHANT_ID = "M224SQ5JEUXY3";
-    private static final String SALT_KEY = "d85d7c38-69bf-41cc-9f61-e2d832b23c3e";  
+    // ********** YOUR CREDENTIALS **********
+    private static final String MERCHANT_ID = "UATM224SQ5JEUXY3"; 
+    private static final String SALT_KEY = "b26a13c1-4e1e-4849-9a3c-a1373613278c";
     private static final String SALT_INDEX = "1";
 
-    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+    // ********** ALWAYS SANDBOX FOR UATM **********
+    private static final String BASE_URL = "https://api-preprod.phonepe.com/apis/pg-sandbox";
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        int amount = Integer.parseInt(request.getParameter("amount")) * 100;
+        response.setContentType("text/html");
+        PrintWriter out = response.getWriter();
 
-        String transactionId = "TXN" + UUID.randomUUID();
+        try {
+            String amountStr = request.getParameter("amount");
+            if (amountStr == null || amountStr.isEmpty()) {
+                out.println("Amount missing!");
+                return;
+            }
 
-        // 🔥 CORRECT JSON BODY
-        Map<String, Object> payRequest = new HashMap<>();
-        payRequest.put("merchantId", MERCHANT_ID);
-        payRequest.put("merchantTransactionId", transactionId);
-        payRequest.put("merchantUserId", "USER123");
-        payRequest.put("amount", amount);
+            int amount = Integer.parseInt(amountStr) * 100; // in paise
 
-        payRequest.put("redirectUrl",
-                "http://localhost:8080/job-search-portal/paymentStatus?transactionId=" + transactionId);
+            // safe 38-char merchant transaction id
+            String merchantTxnId = ("TXN" + UUID.randomUUID().toString().replace("-", "")).substring(0, 25);
 
-        payRequest.put("callbackUrl",
-                "http://localhost:8080/job-search-portal/paymentStatus");
+            // Request Body
+            Map<String, Object> payRequest = new HashMap<>();
+            payRequest.put("merchantId", MERCHANT_ID);
+            payRequest.put("merchantTransactionId", merchantTxnId);
+            payRequest.put("merchantUserId", "USER123");
+            payRequest.put("amount", amount);
+            payRequest.put("redirectUrl",
+                    "http://localhost:8080/job-search-portal/paymentStatus?transactionId=" + merchantTxnId);
+            payRequest.put("callbackUrl",
+                    "http://localhost:8080/job-search-portal/paymentStatus");
+            payRequest.put("paymentInstrument", Map.of("type", "PAY_PAGE"));
 
-        payRequest.put("paymentInstrument", Map.of("type", "PAY_PAGE"));
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonPayload = mapper.writeValueAsString(payRequest);
+            String base64Payload = Base64.getEncoder().encodeToString(jsonPayload.getBytes());
 
-        ObjectMapper mapper = new ObjectMapper();
-        String json = mapper.writeValueAsString(payRequest);
+            String toSign = base64Payload + "/pg/v1/pay" + SALT_KEY;
+            String checksum = sha256(toSign) + "###" + SALT_INDEX;
 
-        // 🔥 Base64 encode
-        String base64Body = Base64.getEncoder().encodeToString(json.getBytes());
+            URL url = new URL(BASE_URL + "/pg/v1/pay");
 
-        // 🔥 Correct signature calculation
-        String checksumData = base64Body + "/pg/v1/pay" + SALT_KEY;
-        String checksum = sha256(checksumData) + "###" + SALT_INDEX;
+            HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("X-VERIFY", checksum);
+            con.setDoOutput(true);
 
-        // 🔥 PhonePe PRE-PROD API
-        URL url = new URL("https://api-preprod.phonepe.com/apis/hermes/pg/v1/pay");
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+            String finalPayload = "{ \"request\": \"" + base64Payload + "\" }";
+            con.getOutputStream().write(finalPayload.getBytes());
 
-        con.setRequestMethod("POST");
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("X-VERIFY", checksum);
-        con.setRequestProperty("X-MERCHANT-ID", MERCHANT_ID);
-        con.setDoOutput(true);
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                    con.getResponseCode() >= 400 ? con.getErrorStream() : con.getInputStream()
+            ));
 
-        // Request body
-        Map<String, String> body = Map.of("request", base64Body);
-        OutputStream os = con.getOutputStream();
-        os.write(mapper.writeValueAsBytes(body));
+            StringBuilder resp = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) resp.append(line);
 
-        // 🔥 Check for error first
-        InputStream inputStream;
-        if (con.getResponseCode() >= 400) {
-            inputStream = con.getErrorStream(); // important!
-        } else {
-            inputStream = con.getInputStream();
+            br.close();
+
+            System.out.println("HTTP CODE = " + con.getResponseCode());
+            System.out.println("PHONEPE RESPONSE = " + resp);
+
+            JsonNode root = mapper.readTree(resp.toString());
+
+            if (!root.path("success").asBoolean()) {
+                out.println("PhonePe Error: " + root.path("message").asText());
+                return;
+            }
+
+            JsonNode redirectNode = root.path("data")
+                    .path("instrumentResponse")
+                    .path("redirectInfo");
+
+            if (redirectNode.isMissingNode()) {
+                out.println("PhonePe Error: Redirect URL missing!");
+                return;
+            }
+
+            String redirectUrl = redirectNode.path("url").asText();
+            response.sendRedirect(redirectUrl);
+
+        } catch (Exception e) {
+            out.println("Exception: " + e.getMessage());
+            e.printStackTrace();
         }
-
-        BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-        StringBuilder resp = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) {
-            resp.append(line);
-        }
-
-        System.out.println("PHONEPE RESPONSE = " + resp.toString());
-
-        // 🔥 Extract redirect URL
-        String redirectUrl = mapper.readTree(resp.toString())
-                .get("data")
-                .get("instrumentResponse")
-                .get("redirectUrl")
-                .asText();
-
-        response.sendRedirect(redirectUrl);
     }
 
-    private String sha256(String data) {
+    private String sha256(String input) {
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(data.getBytes());
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] encoded = digest.digest(input.getBytes());
             StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
+            for (byte b : encoded) hex.append(String.format("%02x", b));
             return hex.toString();
         } catch (Exception e) {
-            return null;
+            throw new RuntimeException(e);
         }
     }
 }
+
 
