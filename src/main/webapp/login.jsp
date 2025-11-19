@@ -32,7 +32,7 @@
                         </h3>
 
                         <!-- ✅ Unified Login Form -->
-                        <form action="${pageContext.request.contextPath}/LoginServlet" method="post">
+                        <form action=${pageContext.request.contextPath}/LoginServlet method="post">
                             
                             <div class="mb-3">
                                 <label class="form-label fw-bold">I am a</label>
