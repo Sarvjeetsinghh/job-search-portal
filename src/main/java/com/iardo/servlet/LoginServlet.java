@@ -1,7 +1,6 @@
 package com.iardo.servlet;
 
 
-
 import java.io.IOException;
 import java.sql.*;
 
@@ -97,4 +96,3 @@ public class LoginServlet extends HttpServlet {
         }
     }
 }
-

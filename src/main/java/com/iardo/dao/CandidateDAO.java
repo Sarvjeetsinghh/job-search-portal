@@ -5,6 +5,7 @@ import com.iardo.util.DBConnection;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 public class CandidateDAO {
 
@@ -30,4 +31,35 @@ public class CandidateDAO {
         }
         return result;
     }
+    
+    
+    
+    public Candidate getCandidateByEmail(String email) {
+        Candidate candidate = null;
+        try {
+            Connection conn = DBConnection.getConnection();
+            String sql = "SELECT * FROM candidates WHERE email = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setString(1, email);
+
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                candidate = new Candidate();
+                candidate.setId(rs.getInt("id"));
+                candidate.setName(rs.getString("name"));
+                candidate.setEmail(rs.getString("email"));
+                candidate.setPassword(rs.getString("password"));
+                candidate.setPhone(rs.getString("phone"));
+                candidate.setGender(rs.getString("gender"));
+                candidate.setCategory(rs.getString("category"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return candidate;
+    }
+    
+    
+    
+
 }
