@@ -12,14 +12,8 @@ import java.security.MessageDigest;
 @WebServlet("/paymentStatus")
 public class PaymentStatusServlet extends HttpServlet {
 
-	@Override
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-	        throws ServletException, IOException {
-	    doGet(request, response);
-	}
-
     private static final String MERCHANT_ID = "M224SQ5JEUXY3";
-    private static final String SALT_KEY = "d85d7c38-69bf-41cc-9f61-e2d832b23c3e";  
+    private static final String SALT_KEY = "d85d7c38-69bf-41cc-9f61-e2d832b23c3e";
     private static final String SALT_INDEX = "1";
 
     @Override
@@ -28,49 +22,60 @@ public class PaymentStatusServlet extends HttpServlet {
 
         String transactionId = request.getParameter("transactionId");
 
-        if (transactionId == null) {
-            response.getWriter().write("Invalid Transaction");
+        if (transactionId == null || transactionId.trim().isEmpty()) {
+            response.setContentType("text/html");
+            response.getWriter().println("<h3>Transaction ID missing</h3>");
             return;
         }
 
-        String urlPath = "/pg/v1/status/" + MERCHANT_ID + "/" + transactionId;
-        String verifyString = urlPath + SALT_KEY;
+        String apiPath = "/pg/v1/status/" + MERCHANT_ID + "/" + transactionId;
+        String stringToHash = apiPath + SALT_KEY;
+        String checksum = sha256(stringToHash) + "###" + SALT_INDEX;
 
-        String checksum = sha256(verifyString) + "###" + SALT_INDEX;
+        String urlStr = "https://api.phonepe.com/apis/hermes" + apiPath;
 
-        URL url = new URL("https://api-preprod.phonepe.com/apis/hermes" + urlPath);
-        HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        con.setRequestProperty("accept", "application/json");
-        con.setRequestProperty("X-VERIFY", checksum);
-        con.setRequestProperty("X-MERCHANT-ID", MERCHANT_ID);
+        try {
+            URL url = new URL(urlStr);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setRequestProperty("X-VERIFY", checksum);
+            conn.setRequestProperty("X-MERCHANT-ID", MERCHANT_ID);
 
-        BufferedReader br = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        StringBuilder output = new StringBuilder();
-        String line;
+            BufferedReader br = new BufferedReader(new InputStreamReader(
+                conn.getResponseCode() >= 400 ? conn.getErrorStream() : conn.getInputStream()
+            ));
 
-        while ((line = br.readLine()) != null) {
-            output.append(line);
+            StringBuilder result = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) {
+                result.append(line);
+            }
+            br.close();
+
+            response.setContentType("text/html");
+            response.getWriter().println("<h2>Payment Status</h2>");
+            response.getWriter().println("<pre>" + result.toString() + "</pre>");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            response.getWriter().println("Error: " + e.getMessage());
         }
-
-        response.setContentType("application/json");
-        response.getWriter().write(output.toString());
     }
 
-
-
-    private String sha256(String str) {
+    private String sha256(String input) {
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(str.getBytes());
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash)
-                hex.append(String.format("%02x", b));
-            return hex.toString();
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes("UTF-8"));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
         } catch (Exception e) {
             return null;
         }
     }
 }
-
-
-
